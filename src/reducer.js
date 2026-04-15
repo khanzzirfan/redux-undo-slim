@@ -29,9 +29,10 @@ function insert (history, state, limit, group) {
   const pastSliced = past.slice(isHistoryOverflow ? 1 : 0)
   const newPast = _latestUnfiltered != null
     ? [
-      ...pastSliced,
-      _latestUnfiltered
-    ] : pastSliced
+        ...pastSliced,
+        _latestUnfiltered
+      ]
+    : pastSliced
 
   return newHistory(newPast, state, [], group)
 }
@@ -103,9 +104,9 @@ export default function undoable (reducer, rawConfig = {}) {
   // Allows the user to call the reducer with redux-undo specific actions
   const skipReducer = config.neverSkipReducer
     ? (res, action, ...slices) => ({
-      ...res,
-      present: reducer(res.present, action, ...slices)
-    })
+        ...res,
+        present: reducer(res.present, action, ...slices)
+      })
     : (res) => res
 
   let initialState
@@ -130,7 +131,8 @@ export default function undoable (reducer, rawConfig = {}) {
         return history
       } else if (isHistory(state)) {
         history = initialState = config.ignoreInitialState
-          ? state : newHistory(
+          ? state
+          : newHistory(
             state.past,
             state.present,
             state.future

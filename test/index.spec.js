@@ -684,10 +684,9 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
         expect(clearedState.present).to.equal(incrementedState.present)
       })
     })
-    
-    if (testConfig && testConfig.checkSlices) {
 
-    describe('running getSlices', () => {
+    if (testConfig && testConfig.checkSlices) {
+      describe('running getSlices', () => {
         const initialState = {
           normalState: 0,
           slice1: 100

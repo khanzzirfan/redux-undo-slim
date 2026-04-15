@@ -49,18 +49,21 @@
     }
   },
   "devDependencies": {
+    "@vitest/coverage-istanbul": "^0.32.0",
+    "coveralls": "^3.0.0",
     "eslint": "^8.43.0",
+    "eslint-config-promise": "^2.0.2",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-es": "^4.1.0",
     "eslint-plugin-import": "^2.27.5",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^6.1.1",
     "eslint-plugin-standard": "^5.0.0",
-    "npm-run-all": "^4.1.5",
     "immer": "^11.0.0",
+    "npm-run-all": "^4.1.5",
     "redux": "^5",
     "rimraf": "^5.0.1",
     "vite": "^4.3.0",
-    "vitest": "^0.32.2",
-    "@vitest/coverage-istanbul": "^0.32.0",
-    "coveralls": "^3.0.0"
+    "vitest": "^0.32.2"
   }
 }
