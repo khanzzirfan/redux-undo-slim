@@ -1,0 +1,295 @@
+{
+  "name": "Immer Patches Architecture Implementation (Phases 0-4)",
+  "branchName": "ralph/immer-patches-architecture",
+  "description": "Implement patch-based history architecture for redux-undo-slim that replaces full state snapshots with minimal Immer patches, dramatically reducing memory usage for large state applications.",
+  "userStories": [
+    {
+      "id": "US-001",
+      "title": "Add Immer peer dependency and types",
+      "description": "As a developer, I want Immer and its types available in the project so that I can implement patch-based state management.",
+      "acceptanceCriteria": [
+        "Add immer as a devDependency and peerDependency in package.json with version >=9.0.0",
+        "Add fast-json-patch as an optional peer dependency (for future diff mode)",
+        "Create src/types.ts with OpEntry and PatchHistory interfaces",
+        "npm run test passes",
+        "npm run lint passes"
+      ],
+      "priority": 1,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-002",
+      "title": "Add enablePatches and stub helpers",
+      "description": "As a developer, I want the Immer patch API enabled at module load and stub functions in place so that the foundation is ready for implementation.",
+      "acceptanceCriteria": [
+        "Add enablePatches() call in src/index.js module initialization",
+        "Create src/patch-helpers.js with stub functions: applyUndo, applyRedo, insertOp",
+        "Stub functions return unchanged history (no-op)",
+        "npm run test passes",
+        "npm run lint passes"
+      ],
+      "priority": 2,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001"]
+    },
+    {
+      "id": "US-003",
+      "title": "Implement newPatchHistory factory",
+      "description": "As a developer, I want a factory function that creates the new PatchHistory state shape so that I can initialize history with the new structure.",
+      "acceptanceCriteria": [
+        "Implement newPatchHistory<T>(present, stack?, cursor?) in src/helpers.js",
+        "Function returns { present, stack: [], cursor: 0, _latestUnfiltered: present }",
+        "Export both newHistory (existing) and newPatchHistory (new)",
+        "npm run test passes",
+        "npm run lint passes"
+      ],
+      "priority": 3,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-001", "US-002"]
+    },
+    {
+      "id": "US-004",
+      "title": "Implement isPatchHistory type guard",
+      "description": "As a developer, I want a type guard to detect whether a state uses the new patch history shape so that I can handle both old and new formats.",
+      "acceptanceCriteria": [
+        "Implement isPatchHistory(state) in src/helpers.js",
+        "Returns true when state has present, stack (array), and cursor (number)",
+        "Returns false for existing snapshot-style history",
+        "npm run test passes",
+        "npm run lint passes"
+      ],
+      "priority": 4,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-003"]
+    },
+    {
+      "id": "US-005",
+      "title": "Implement insertOp helper",
+      "description": "As a developer, I want an insertOp function that adds a new operation to the stack and advances the cursor so that I can record state changes.",
+      "acceptanceCriteria": [
+        "Slices stack to cursor position (removes redo entries)",
+        "Pushes new OpEntry with patches, inversePatches, and optional group",
+        "Increments cursor by 1",
+        "Returns new PatchHistory object",
+        "npm run test passes",
+        "npm run lint passes"
+      ],
+      "priority": 5,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-004"]
+    },
+    {
+      "id": "US-006",
+      "title": "Implement computed helpers (canUndo, canRedo)",
+      "description": "As a developer, I want helper functions to determine if undo/redo is possible so that I can compute these values without storing them.",
+      "acceptanceCriteria": [
+        "canUndo(history) returns history.cursor > 0",
+        "canRedo(history) returns history.cursor < history.stack.length",
+        "Unit tests verify both return correct boolean values",
+        "npm run test passes",
+        "npm run lint passes"
+      ],
+      "priority": 6,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-005"]
+    },
+    {
+      "id": "US-007",
+      "title": "Implement undoOp with applyPatches",
+      "description": "As a developer, I want an undoOp function that applies inverse patches to move back one step so that undo functionality works with the new architecture.",
+      "acceptanceCriteria": [
+        "Returns unchanged history if cursor is 0",
+        "Applies inverse patches from stack[cursor - 1].ip to present state",
+        "Decrements cursor by 1",
+        "Returns new PatchHistory with updated present and cursor",
+        "npm run test passes",
+        "npm run lint passes"
+      ],
+      "priority": 7,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-006"]
+    },
+    {
+      "id": "US-008",
+      "title": "Implement redoOp with applyPatches",
+      "description": "As a developer, I want a redoOp function that applies forward patches to move forward one step so that redo functionality works with the new architecture.",
+      "acceptanceCriteria": [
+        "Returns unchanged history if cursor equals stack.length",
+        "Applies forward patches from stack[cursor].p to present state",
+        "Increments cursor by 1",
+        "Returns new PatchHistory with updated present and cursor",
+        "npm run test passes",
+        "npm run lint passes"
+      ],
+      "priority": 8,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-007"]
+    },
+    {
+      "id": "US-009",
+      "title": "Unit tests for undoOp and redoOp",
+      "description": "As a developer, I want unit tests that verify undo/redo correctness so that I can trust the implementation.",
+      "acceptanceCriteria": [
+        "Undo on empty stack returns unchanged history",
+        "Undo on cursor=1 correctly restores state",
+        "Redo on full cursor returns unchanged history",
+        "Redo after undo restores state",
+        "Undo + redo round-trip restores to exact same present reference",
+        "npm run test passes",
+        "npm run lint passes"
+      ],
+      "priority": 9,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-007", "US-008"]
+    },
+    {
+      "id": "US-010",
+      "title": "Implement jumpOp for multi-step navigation",
+      "description": "As a developer, I want a jumpOp function that can move multiple steps at once using patch composition so that jump functionality is efficient.",
+      "acceptanceCriteria": [
+        "Clamps n to valid range (-cursor to stack.length - cursor)",
+        "For positive n: composes forward patches from cursor through cursor+n-1",
+        "For negative n: composes inverse patches in reverse order",
+        "Applies composed patches in single applyPatches call",
+        "Updates cursor accordingly",
+        "npm run test passes",
+        "npm run lint passes"
+      ],
+      "priority": 10,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-007", "US-008"]
+    },
+    {
+      "id": "US-011",
+      "title": "Implement jumpToPastOp and jumpToFutureOp",
+      "description": "As a developer, I want functions to jump to specific past/future indices so that jumpToPast and jumpToFuture work with the new architecture.",
+      "acceptanceCriteria": [
+        "jumpToPastOp(history, index) validates index in [0, cursor - 1]",
+        "jumpToFutureOp(history, index) validates index in [0, stack.length - cursor - 1]",
+        "Both delegate to jumpOp with correct step count",
+        "npm run test passes",
+        "npm run lint passes"
+      ],
+      "priority": 11,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-010"]
+    },
+    {
+      "id": "US-012",
+      "title": "Unit tests for jump operations",
+      "description": "As a developer, I want unit tests for jump operations so that I can verify correct behavior.",
+      "acceptanceCriteria": [
+        "jump(0) returns same history",
+        "jump(-1) gives same result as undo",
+        "jump(+1) gives same result as redo",
+        "jumpToPast(0) reaches oldest state",
+        "jumpToFuture(0) reaches first future state",
+        "Multi-step jump gives same state as sequential single steps",
+        "npm run test passes",
+        "npm run lint passes"
+      ],
+      "priority": 12,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-010", "US-011"]
+    },
+    {
+      "id": "US-013",
+      "title": "Add patchMode config to undoable",
+      "description": "As a developer, I want the undoable function to accept a patchMode config option so that I can select between snapshot and patch modes.",
+      "acceptanceCriteria": [
+        "Add patchMode to config defaults with default value 'snapshot'",
+        "Config accepts: 'snapshot', 'immer', 'diff'",
+        "Default 'snapshot' keeps existing tests green",
+        "npm run test passes",
+        "npm run lint passes"
+      ],
+      "priority": 13,
+      "passes": false,
+      "notes": "",
+      "dependsOn": []
+    },
+    {
+      "id": "US-014",
+      "title": "Create patchModeReducer",
+      "description": "As a developer, I want a separate reducer function that handles the patch mode logic so that the existing snapshot logic remains untouched.",
+      "acceptanceCriteria": [
+        "Create src/patch-reducer.js file",
+        "Handle init/createHistory using newPatchHistory",
+        "Handle undoType via undoOp",
+        "Handle redoType via redoOp",
+        "Handle jumpType, jumpToPastType, jumpToFutureType via jump ops",
+        "Handle clearHistoryType (clear stack and reset cursor)",
+        "npm run test passes",
+        "npm run lint passes"
+      ],
+      "priority": 14,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-003", "US-004", "US-005", "US-006", "US-007", "US-008"]
+    },
+    {
+      "id": "US-015",
+      "title": "Wire immer mode into main reducer",
+      "description": "As a developer, I want the main reducer to dispatch to patchModeReducer when patchMode is 'immer' so that the patch mode is functional.",
+      "acceptanceCriteria": [
+        "Add branch at top of returned reducer checking config.patchMode",
+        "For 'immer' mode, call patchModeReducer",
+        "Existing snapshot logic unchanged",
+        "Preserves initTypes reset behavior",
+        "npm run test passes",
+        "npm run lint passes"
+      ],
+      "priority": 15,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-014"]
+    },
+    {
+      "id": "US-016",
+      "title": "Implement default action handling in patchModeReducer",
+      "description": "As a developer, I want the patchModeReducer to capture patches when handling regular actions so that state changes are recorded.",
+      "acceptanceCriteria": [
+        "Use produceWithPatches around reducer call",
+        "Extract patches and inversePatches from produceWithPatches result",
+        "Call insertOp with the new patches",
+        "Update _latestUnfiltered to nextState",
+        "npm run test passes",
+        "npm run lint passes"
+      ],
+      "priority": 16,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-015"]
+    },
+    {
+      "id": "US-017",
+      "title": "Integration test for immer mode",
+      "description": "As a developer, I want an integration test that verifies the full undo/redo flow works in immer mode so that end-to-end functionality is confirmed.",
+      "acceptanceCriteria": [
+        "Create test with counter reducer wrapped in undoable with patchMode: 'immer'",
+        "Increment 3 times, undo once, redo once - verify present value",
+        "Verify stack.length and cursor at each step",
+        "All existing snapshot tests still pass (no regression)",
+        "npm run test passes",
+        "npm run lint passes"
+      ],
+      "priority": 17,
+      "passes": false,
+      "notes": "",
+      "dependsOn": ["US-014", "US-015", "US-016"]
+    }
+  ]
+}

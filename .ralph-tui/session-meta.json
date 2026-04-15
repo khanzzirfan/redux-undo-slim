@@ -1,0 +1,15 @@
+{
+  "id": "a3c843c6-f728-41a3-a064-4f90bf48c8c1",
+  "status": "failed",
+  "startedAt": "2026-04-15T13:13:59.849Z",
+  "updatedAt": "2026-04-15T13:14:01.340Z",
+  "agentPlugin": "opencode",
+  "trackerPlugin": "json",
+  "prdPath": "./tasks/prd.json",
+  "currentIteration": 0,
+  "maxIterations": 800,
+  "totalTasks": 0,
+  "tasksCompleted": 0,
+  "cwd": "C:\\code\\Code\\redux-undo-slim",
+  "endedAt": "2026-04-15T13:14:01.340Z"
+}
