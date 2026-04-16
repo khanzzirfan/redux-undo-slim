@@ -1,4 +1,4 @@
-import { expect, describe, it } from 'vitest'
+import { describe, expect, it } from 'vitest'
 import { combineFilters } from '../src/index'
 
 describe('Combine Filters', () => {
@@ -8,7 +8,7 @@ describe('Combine Filters', () => {
     previousHistory: [0, -1]
   }
 
-  function checkArguments (action, currentState, previousHistory) {
+  function checkArguments (action: { type: string }, currentState: number, previousHistory: number[]): boolean {
     return (
       action === sample.action &&
       currentState === sample.currentState &&
@@ -16,7 +16,7 @@ describe('Combine Filters', () => {
     )
   }
 
-  function checkArgumentsNot (action, currentState, previousHistory) {
+  function checkArgumentsNot (action: { type: string }, currentState: number, previousHistory: number[]): boolean {
     return (
       action !== sample.action ||
       currentState !== sample.currentState ||
@@ -24,10 +24,10 @@ describe('Combine Filters', () => {
     )
   }
 
-  function checkStateNot1 (action, state) { return state !== 1 }
-  function checkStateNot2 (action, state) { return state !== 2 }
+  function checkStateNot1 (_action: unknown, state: number): boolean { return state !== 1 }
+  function checkStateNot2 (_action: unknown, state: number): boolean { return state !== 2 }
 
-  function checkIfCalled (action) {
+  function checkIfCalled (action: { hasBeenCalled?: boolean }): boolean {
     action.hasBeenCalled = true
     return true
   }

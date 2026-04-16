@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest'
 import { createStore } from 'redux'
 import undoable, { ActionCreators, isPatchHistory, canUndo, canRedo, isHistory, pastLength, futureLength } from '../src/index'
 
-function includeAction (rawActions) {
+function includeAction (rawActions: string | string[]): (action: { type: string }) => boolean {
   const actions = Array.isArray(rawActions) ? rawActions : [rawActions]
   return (action) => actions.indexOf(action.type) >= 0
 }
 
-function groupByActionTypes (rawActions) {
+function groupByActionTypes (rawActions: string | string[]): (action: { type: string }) => string | null {
   const actions = Array.isArray(rawActions) ? rawActions : [rawActions]
   return (action) => actions.indexOf(action.type) >= 0 ? action.type : null
 }
