@@ -185,7 +185,7 @@ export default function patchModeReducer<S, A extends AnyAction = AnyAction>(
         }
 
         const initTypes = config.initTypes ?? []
-        const isInitAction = initTypes.some(type => action.type.startsWith(type) || action.type.includes(type))
+        const isInitAction = initTypes.some(type => action.type.startsWith(type))
         if (isInitAction) {
           debug.log('reset history due to init action', action.type)
           debug.end(initialState)
@@ -229,6 +229,7 @@ export default function patchModeReducer<S, A extends AnyAction = AnyAction>(
                 {
                   p: [...(lastOp.p || []), ...patches],
                   ip: [...inversePatches, ...(lastOp.ip || [])],
+                  src: patchedMode,
                   ...(group != null && { g: group })
                 }
               ],
@@ -241,7 +242,7 @@ export default function patchModeReducer<S, A extends AnyAction = AnyAction>(
           }
         }
 
-        const updatedHistory = insertOp(history, patches, inversePatches, group, config.limit)
+        const updatedHistory = insertOp(history, patches, inversePatches, group, config.limit, patchMode as 'immer' | 'diff')
         updatedHistory.present = res.present
         updatedHistory._latestUnfiltered = res.present
         updatedHistory.group = group

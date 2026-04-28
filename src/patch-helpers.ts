@@ -1,5 +1,6 @@
-import { applyPatches, type Patch } from 'immer'
+import { type Patch } from 'immer'
 import type { PatchHistory, OpEntry } from './types'
+import { applyPatchEntry } from './apply-patch'
 
 export function applyUndo<T> (history: PatchHistory<T>): PatchHistory<T> {
   if (history.cursor <= 0) {
@@ -9,10 +10,11 @@ export function applyUndo<T> (history: PatchHistory<T>): PatchHistory<T> {
   if (!entry || !entry.ip) {
     return history
   }
-  const newPresent = applyPatches(history.present, entry.ip)
+  const src = entry.src ?? 'immer'
+  const newPresent = applyPatchEntry(history.present, entry.ip, src)
   return {
     ...history,
-    present: newPresent as T,
+    present: newPresent,
     cursor: history.cursor - 1
   }
 }
@@ -25,10 +27,11 @@ export function applyRedo<T> (history: PatchHistory<T>): PatchHistory<T> {
   if (!entry || !entry.p) {
     return history
   }
-  const newPresent = applyPatches(history.present, entry.p)
+  const src = entry.src ?? 'immer'
+  const newPresent = applyPatchEntry(history.present, entry.p, src)
   return {
     ...history,
-    present: newPresent as T,
+    present: newPresent,
     cursor: history.cursor + 1
   }
 }
@@ -38,15 +41,17 @@ export function insertOp<T> (
   patches: Patch[],
   inversePatches: Patch[],
   group: string | number | null | undefined,
-  limit: number | undefined
+  limit: number | undefined,
+  src: 'immer' | 'diff' = 'immer'
 ): PatchHistory<T> {
   const slicedStack = history.stack.slice(0, history.cursor)
   const newEntry: OpEntry = {
     p: patches,
     ip: inversePatches,
+    src,
     ...(group != null && { g: group })
   }
-  let newStack: OpEntry[] = [...slicedStack, newEntry]
+  let newStack: OpEntry<T>[] = [...slicedStack, newEntry]
   let newCursor = history.cursor + 1
 
   if (limit && newStack.length > limit) {
@@ -83,24 +88,22 @@ export function jumpOp<T> (history: PatchHistory<T>, n: number): PatchHistory<T>
   let newCursor = cursor
 
   if (clampedN > 0) {
-    const forwardPatches: Patch[][] = []
     for (let i = cursor; i < cursor + clampedN; i++) {
       const entry = stack[i]
       if (entry && entry.p) {
-        forwardPatches.push(entry.p)
+        const src = entry.src ?? 'immer'
+        newPresent = applyPatchEntry(newPresent, entry.p, src)
       }
     }
-    newPresent = applyPatches(newPresent, composePatches(forwardPatches)) as T
     newCursor = cursor + clampedN
   } else {
-    const inversePatches: Patch[][] = []
-    for (let i = cursor + clampedN; i < cursor; i++) {
+    for (let i = cursor - 1; i >= cursor + clampedN; i--) {
       const entry = stack[i]
       if (entry && entry.ip) {
-        inversePatches.unshift(entry.ip)
+        const src = entry.src ?? 'immer'
+        newPresent = applyPatchEntry(newPresent, entry.ip, src)
       }
     }
-    newPresent = applyPatches(newPresent, composePatches(inversePatches)) as T
     newCursor = cursor + clampedN
   }
 

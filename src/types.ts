@@ -1,13 +1,16 @@
-import type { EnablePatches } from 'immer';
+import type { Patch } from 'immer';
 
 export interface PatchHistory<S> {
-  pastPatches: OpEntry<S>[];
-  presentPatches: OpEntry<S>[];
-  futurePatches: OpEntry<S>[];
+  present: S;
+  stack: OpEntry[];
+  cursor: number;
+  group?: string | number;
+  _latestUnfiltered?: S | null;
 }
 
-export interface OpEntry<S> {
-  state: S;
-  patches: EnablePatches<S>[];
-  inversePatches: EnablePatches<S>[];
+export interface OpEntry {
+  p: Patch[];
+  ip: Patch[];
+  src?: 'immer' | 'diff';
+  g?: string | number;
 }

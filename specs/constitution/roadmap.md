@@ -121,8 +121,8 @@
 
 - [x] Runtime `require('fast-json-patch')` with fallback warning
 - [x] `fastJsonPatch.compare(prev, next)` for patches, `compare(next, prev)` for inverse
-- [ ] Verify RFC 6902 patches are compatible with immer `applyPatches` OR switch to `fast-json-patch`'s `applyPatch` for undo/redo in diff mode
-- [ ] Integration tests: plain counter reducer in diff mode — same behaviour as immer mode
+- [x] Verify RFC 6902 patches are compatible with immer `applyPatches` OR switch to `fast-json-patch`'s `applyPatch` for undo/redo in diff mode
+- [x] Integration tests: plain counter reducer in diff mode — same behaviour as immer mode
 - [ ] Warn in dev if `fast-json-patch` not installed when `patchMode: 'diff'` selected
 
 ---
@@ -134,9 +134,9 @@
 - [x] Export `PatchHistory<T>`, `OpEntry`, `HistoryState<T>` from `src/index.ts`
 - [x] Export `canUndo`, `canRedo`, `pastLength`, `futureLength`
 - [x] Export `materializeHistory` — **currently a stub for PatchHistory**
-- [ ] Fix `materializeHistory` — replay patches from `initialState` to reconstruct `past[]` and `future[]`
-- [ ] Unit tests: `materializeHistory` output matches parallel snapshot-mode history
-- [ ] Update `typings.d.ts` to expose new types
+- [x] Fix `materializeHistory` — replay patches from `initialState` to reconstruct `past[]` and `future[]`
+- [x] Unit tests: `materializeHistory` output matches parallel snapshot-mode history
+- [x] Update `typings.d.ts` to expose new types
 
 ---
 
@@ -170,9 +170,9 @@
 - [x] `docs/architecture-immer-patches.md` written
 - [x] `docs/implementation-phases.md` written
 - [x] `docs/code-review.md` written
-- [ ] Fix `vite.config.ts` — entry point `index.js` → `index.ts`, name `ReduxUndoSlim`
-- [ ] Remove legacy `.js` source files from `src/` (superseded by `.ts`)
-- [ ] Add `CHANGELOG.md` — v1.x → v2.0.0 migration notes
+- [x] Fix `vite.config.ts` — entry point `index.js` → `index.ts`, name `ReduxUndoSlim`
+- [x] Remove legacy `.js` source files from `src/` (superseded by `.ts`)
+- [x] Add `CHANGELOG.md` — v1.x → v2.0.0 migration notes
 - [ ] CI pipeline: GitHub Actions — `npm test && npm run lint` on push to `dev` + `master`
 - [ ] Publish `redux-undo-slim@2.0.0` to npm
 

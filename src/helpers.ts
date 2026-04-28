@@ -1,5 +1,7 @@
 import type { AnyAction } from 'redux'
 import type { History, PatchHistory, HistoryState } from './types'
+import type { OpEntry } from './types'
+import { applyPatchEntry } from './apply-patch'
 
 export function parseActions (rawActions: string | string[] | undefined, defaultValue: string[] = []): string[] {
   if (Array.isArray(rawActions)) {
@@ -55,7 +57,7 @@ export function newHistory<T> (past: T[], present: T, future: T[], group: string
   }
 }
 
-export function newPatchHistory<T> (present: T, stack: import('./types').OpEntry[] = [], cursor = 0): PatchHistory<T> {
+export function newPatchHistory<T> (present: T, stack: OpEntry[] = [], cursor = 0): PatchHistory<T> {
   return {
     present,
     stack,
@@ -88,8 +90,32 @@ export function futureLength (history: PatchHistory<unknown>): number {
   return history.stack.length - history.cursor
 }
 
-export function materializeHistory<T> (history: HistoryState<T>): { past: T[]; present: T; future: T[] } {
+export function materializeHistory<T> (history: HistoryState<T>, initialState?: T): { past: T[]; present: T; future: T[] } {
   if (!isHistory(history)) {
+    if (isPatchHistory<T>(history)) {
+      if (initialState === undefined) {
+        throw new Error(
+          'redux-undo-slim: materializeHistory requires initialState when called with PatchHistory'
+        )
+      }
+      const past: T[] = []
+      let state = initialState
+      for (let i = 0; i < history.cursor; i++) {
+        past.push(state)
+        const entry = history.stack[i]
+        const src = entry.src ?? 'immer'
+        state = applyPatchEntry(state, entry.p, src)
+      }
+      const future: T[] = []
+      state = history.present
+      for (let i = history.cursor; i < history.stack.length; i++) {
+        const entry = history.stack[i]
+        const src = entry.src ?? 'immer'
+        state = applyPatchEntry(state, entry.p, src)
+        future.push(state)
+      }
+      return { past, present: history.present, future }
+    }
     return { past: [], present: history.present, future: [] }
   }
   return { past: history.past, present: history.present, future: history.future }
