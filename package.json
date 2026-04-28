@@ -1,6 +1,6 @@
 {
   "name": "redux-undo-slim",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Memory-efficient undo/redo for Redux — powered by immer patches",
   "main": "./dist/redux-undo-slim.umd.js",
   "typings": "typings.d.ts",
@@ -23,7 +23,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/irfank/redux-undo-slim.git"
+    "url": "https://github.com/khanzzirfan/redux-undo-slim.git"
   },
   "keywords": [
     "redux",
@@ -35,12 +35,12 @@
     "patches",
     "memory-efficient"
   ],
-  "author": "Irfan Khan (https://github.com/irfank)",
+  "author": "Irfan Khan (https://github.com/khanzzirfan)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/irfank/redux-undo-slim/issues"
+    "url": "https://github.com/khanzzirfan/redux-undo-slim/issues"
   },
-  "homepage": "https://github.com/irfank/redux-undo-slim",
+  "homepage": "https://github.com/khanzzirfan/redux-undo-slim",
   "peerDependencies": {
     "immer": ">=10.0.0"
   },
