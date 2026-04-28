@@ -1,4 +1,4 @@
-import { produceWithPatches, enablePatches, type Patch, type Draft } from 'immer'
+import { produceWithPatches, type Patch, type Draft } from 'immer'
 import type { AnyAction, Reducer } from 'redux'
 import * as debug from './debug'
 import { ActionTypes } from './actions'
@@ -14,8 +14,6 @@ try {
 } catch (e) {
   fastJsonPatch = null
 }
-
-enablePatches()
 
 function createPatchHistory<T> (state: T, ignoreInitialState: boolean): PatchHistory<T> {
   const history = newPatchHistory<T>(state, [], 0)
@@ -51,7 +49,7 @@ export default function patchModeReducer<S, A extends AnyAction = AnyAction>(
 
     ...rawConfig,
 
-    initTypes: parseActions(rawConfig.initTypes, ['@@redux-undo/INIT']),
+    initTypes: parseActions(rawConfig.initTypes, ['@@redux/INIT', '@@redux-undo/INIT']),
     clearHistoryType: parseActions(
       rawConfig.clearHistoryType,
       [ActionTypes.CLEAR_HISTORY]
@@ -186,6 +184,34 @@ export default function patchModeReducer<S, A extends AnyAction = AnyAction>(
           }
         }
 
+        const initTypes = config.initTypes ?? []
+        const isInitAction = initTypes.some(type => action.type.startsWith(type) || action.type.includes(type))
+        if (isInitAction) {
+          debug.log('reset history due to init action', action.type)
+          debug.end(initialState)
+          return initialState
+        }
+
+        const filtered = typeof config.filter === 'function' && !config.filter(
+          action,
+          newState,
+          history
+        )
+
+        if (filtered) {
+          const filteredState: PatchHistory<S> = {
+            ...history,
+            present: newState,
+            group: history.group
+          }
+          if (!config.syncFilter) {
+            filteredState._latestUnfiltered = history._latestUnfiltered
+          }
+          debug.log('filter ignored action, not storing it in stack')
+          debug.end(filteredState)
+          return filteredState
+        }
+
         const group = config.groupBy?.(action, newState, history)
         const groupValue = group ?? undefined
         res = {
@@ -203,7 +229,7 @@ export default function patchModeReducer<S, A extends AnyAction = AnyAction>(
                 {
                   p: [...(lastOp.p || []), ...patches],
                   ip: [...inversePatches, ...(lastOp.ip || [])],
-                  g: group
+                  ...(group != null && { g: group })
                 }
               ],
               present: res.present,

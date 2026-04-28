@@ -44,7 +44,7 @@ export function insertOp<T> (
   const newEntry: OpEntry = {
     p: patches,
     ip: inversePatches,
-    g: group
+    ...(group != null && { g: group })
   }
   let newStack: OpEntry[] = [...slicedStack, newEntry]
   let newCursor = history.cursor + 1

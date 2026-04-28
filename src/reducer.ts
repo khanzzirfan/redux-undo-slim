@@ -217,7 +217,8 @@ export default function undoable<S, A extends AnyAction = AnyAction> (
         }
 
         const initTypes = config.initTypes ?? []
-        if (initTypes.includes(action.type)) {
+        const isInitAction = initTypes.some(type => action.type.startsWith(type) || action.type.includes(type))
+        if (isInitAction) {
           debug.log('reset history due to init action')
           debug.end(initialState)
           return initialState
