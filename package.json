@@ -1,13 +1,13 @@
 {
-  "name": "redux-undo",
-  "version": "1.0.1",
-  "description": "simple undo/redo functionality for redux state containers",
-  "main": "./dist/redux-undo.umd.js",
+  "name": "redux-undo-slim",
+  "version": "2.0.1",
+  "description": "Memory-efficient undo/redo for Redux — powered by immer patches",
+  "main": "./dist/redux-undo-slim.umd.js",
   "typings": "typings.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/redux-undo.mjs",
-      "require": "./dist/redux-undo.umd.js",
+      "import": "./dist/redux-undo-slim.mjs",
+      "require": "./dist/redux-undo-slim.umd.js",
       "types": "./typings.d.ts"
     }
   },
@@ -18,37 +18,55 @@
     "test:bail": "npm run test:watch -- --bail",
     "test:cov": "npm run test -- --coverage",
     "test:coveralls": "npm run test -- --coverage && coveralls < coverage/lcov.info",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit"
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/omnidan/redux-undo.git"
+    "url": "https://github.com/khanzzirfan/redux-undo-slim.git"
   },
   "keywords": [
     "redux",
     "undo",
     "redo",
     "flux",
-    "time travel"
+    "time travel",
+    "immer",
+    "patches",
+    "memory-efficient"
   ],
-  "author": "Daniel Bugl <me@omnidan.net> (https://github.com/omnidan)",
+  "author": "Irfan Khan (https://github.com/khanzzirfan)",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/omnidan/redux-undo/issues"
+    "url": "https://github.com/khanzzirfan/redux-undo-slim/issues"
   },
-  "homepage": "https://github.com/omnidan/redux-undo",
+  "homepage": "https://github.com/khanzzirfan/redux-undo-slim",
+  "peerDependencies": {
+    "immer": ">=10.0.0"
+  },
+  "peerDependenciesMeta": {
+    "fast-json-patch": {
+      "optional": true
+    }
+  },
   "devDependencies": {
+    "@vitest/coverage-istanbul": "^0.32.0",
+    "coveralls": "^3.0.0",
     "eslint": "^8.43.0",
+    "eslint-config-promise": "^2.0.2",
+    "eslint-config-standard": "^17.1.0",
+    "eslint-plugin-es": "^4.1.0",
     "eslint-plugin-import": "^2.27.5",
     "eslint-plugin-node": "^11.1.0",
     "eslint-plugin-promise": "^6.1.1",
     "eslint-plugin-standard": "^5.0.0",
+    "fast-json-patch": "^3.1.1",
+    "immer": "^11.0.0",
     "npm-run-all": "^4.1.5",
-    "redux": "^4.2.1",
+    "redux": "^5",
     "rimraf": "^5.0.1",
+    "typescript": "^5.0.0",
     "vite": "^4.3.0",
-    "vitest": "^0.32.2",
-    "@vitest/coverage-istanbul": "^0.32.0",
-    "coveralls": "^3.0.0"
+    "vitest": "^0.32.2"
   }
 }

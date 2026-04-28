@@ -13,3 +13,6 @@ es
 # Generated test output
 coverage
 .nyc_output
+
+## npmrc
+.npmrc

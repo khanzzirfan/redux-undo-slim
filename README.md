@@ -1,415 +1,366 @@
-# redux undo/redo
+# redux-undo-slim
 
-> ⚠️ **Project Status: Not Actively Maintained**
-> 
-> This project is currently not being actively maintained. If you are interested in taking over its development and maintenance, please contact me.
+[![NPM version](https://img.shields.io/npm/v/redux-undo-slim.svg?style=flat-square)](https://www.npmjs.com/package/redux-undo-slim)
+[![NPM Downloads](https://img.shields.io/npm/dm/redux-undo-slim.svg?style=flat-square)](https://www.npmjs.com/package/redux-undo-slim)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](./LICENSE.md)
 
-[![NPM version (>=1.0)](https://img.shields.io/npm/v/redux-undo.svg?style=flat-square)](https://www.npmjs.com/package/redux-undo) [![NPM Downloads](https://img.shields.io/npm/dm/redux-undo.svg?style=flat-square)](https://www.npmjs.com/package/redux-undo) [![Coverage Status](https://img.shields.io/coveralls/omnidan/redux-undo.svg?style=flat-square)](https://coveralls.io/r/omnidan/redux-undo) [![Dependencies](https://img.shields.io/david/omnidan/redux-undo.svg?style=flat-square)](https://david-dm.org/omnidan/redux-undo) [![js-standard-style](https://img.shields.io/badge/code%20style-standard-brightgreen.svg?style=flat-square)](http://standardjs.com/) [![GitHub license](https://img.shields.io/badge/license-MIT-blue.svg?style=flat-square)](https://raw.githubusercontent.com/omnidan/redux-undo/master/LICENSE.md)
+_Memory-efficient undo/redo for Redux — powered by [immer](https://immerjs.github.io/immer/) patches._
 
-_simple undo/redo functionality for redux state containers_
+`redux-undo-slim` is a drop-in higher-order reducer that adds undo/redo history to any
+Redux slice. Unlike the classic approach of storing full state snapshots per step, it
+stores only the **minimal diff** (immer patches) between states — dramatically reducing
+memory usage for large or deeply nested state trees.
 
-**Protip:** Check out the [todos-with-undo example](https://github.com/omnidan/redux-undo/tree/master/examples/todos-with-undo) or the [redux-undo-boilerplate](https://github.com/omnidan/redux-undo-boilerplate) to quickly get started with `redux-undo`.
-
-**Switching from 0.x to 1.0:** Make sure to update your programs to the [latest History API](#history-api).
-
-**Help wanted:** We are looking for volunteers to maintain this project, if you are interested, feel free to contact me at [me@omnidan.net](mailto:me@omnidan.net)
-
----
-
-**This README is about the new 1.0 branch of redux-undo, if you are using
-or plan on using 0.6, check out [the `0.6` branch](https://github.com/omnidan/redux-undo/tree/0.6)**
+For a full breakdown of the architecture see [docs/architecture-immer-patches.md](./docs/architecture-immer-patches.md).
 
 ---
-
-## Note on Imports
-
-If you use Redux Undo in CommonJS environment, **don’t forget to add `.default` to your import**.
-
-```diff
-- var ReduxUndo = require('redux-undo')
-+ var ReduxUndo = require('redux-undo').default
-```
-
-If your environment support es modules just go by:
-
-```js
-import ReduxUndo from 'redux-undo';
-```
-
-We are also supporting UMD build:
-
-```js
-var ReduxUndo = window.ReduxUndo.default;
-```
-
-**once again `.default` is required.**
 
 ## Installation
 
-```
-npm install --save redux-undo
+```bash
+npm install redux-undo-slim immer
 ```
 
+- `immer` is a **required peer dependency** (`>=9.0.0`)
+- `fast-json-patch` is optional (`>=2.0.0`) — only needed for `patchMode: 'diff'`
 
-## API
+---
+
+## Quick Start
 
 ```js
-import undoable from 'redux-undo';
-undoable(reducer)
-undoable(reducer, config)
+import undoable, { ActionCreators } from 'redux-undo-slim'
+import { combineReducers } from 'redux'
+
+const rootReducer = combineReducers({
+  document: undoable(documentReducer, { patchMode: 'immer' })
+})
+
+// Undo / redo
+store.dispatch(ActionCreators.undo())
+store.dispatch(ActionCreators.redo())
 ```
 
+---
 
-## Making your reducers undoable
+## Making Your Reducer Undoable
 
-`redux-undo` is a reducer enhancer (higher-order reducer). It provides the `undoable` function, which
-takes an existing reducer and a configuration object and enhances your existing
-reducer with undo functionality.
-
-**Note:** If you were accessing `state.counter` before, you have to access
-`state.present.counter` after wrapping your reducer with `undoable`.
-
-To install, firstly import `redux-undo`:
+`undoable` is a reducer enhancer (higher-order reducer). Wrap any existing reducer:
 
 ```js
-// Redux utility functions
-import { combineReducers } from 'redux';
-// redux-undo higher-order reducer
-import undoable from 'redux-undo';
-```
+import undoable from 'redux-undo-slim'
 
-Then, add `undoable` to your reducer(s) like this:
-
-```js
 combineReducers({
   counter: undoable(counter)
 })
 ```
 
-A [configuration](#configuration) can be passed like this:
+> **Note:** After wrapping, access your state via `state.counter.present` instead
+> of `state.counter`.
 
-```js
-combineReducers({
-  counter: undoable(counter, {
-    limit: 10 // set a limit for the size of the history
-  })
-})
-```
+### Multiple independent histories
 
-## Apply redux-undo magic to specific slice of your state.
-When you expose an undo redo history action to your app users, you will not want those action 
-to apply on your whole redux state.
-Lets see this with naive document editor state.
-
-```js
-const rootReducer = combineReducers({
-  ui: uiReducer,
-  document: documentReducer,
-})
-```
-
-wrapping the documentReducer with undoable higher order reducer
-
-```js
-const rootReducer = combineReducers({
-  ui: uiReducer,
-  document: undoable(documentReducer),
-})
-```
-will provide only the document mountpoint of your state with an history.
-
-an even more advanced usage would be to have many different mountpoint of your redux state, managed
-under redux-undo.
 ```js
 const rootReducer = combineReducers({
   ui: uiReducer,
   document: undoable(documentReducer, {
     undoType: 'DOCUMENT_UNDO',
     redoType: 'DOCUMENT_REDO',
-    // here you will want to configure specific redux-undo action type  
   }),
-  anotherDocument: undoable(documentReducer, {
-    undoType: 'ANOTHERDOCUMENT_UNDO',
-    redoType: 'ANOTHERDOCUMENT_REDO',
-    // here you will want to configure specific redux-undo action type  
+  canvas: undoable(canvasReducer, {
+    undoType: 'CANVAS_UNDO',
+    redoType: 'CANVAS_REDO',
   }),
 })
 ```
-Don't forget to configure specific redux-undo action type for each of your mount point if you don't
-want to see your different history to undo/redo in sync.
+
+Always set distinct action types per slice when using multiple `undoable` wrappers,
+otherwise all histories will respond to the same undo/redo actions.
+
+---
 
 ## History API
 
-Wrapping your reducer with `undoable` makes the state look like this:
+Wrapping your reducer with `undoable` produces this state shape:
 
 ```js
 {
-  past: [...pastStatesHere...],
-  present: {...currentStateHere...},
-  future: [...futureStatesHere...]
+  present:     { ...currentState },  // your live state — this is what you read
+  stack:       [...opEntries],       // internal patch stack (past + future combined)
+  cursor:      3,                    // how many ops have been applied
+  canUndo:     true,                 // shorthand: cursor > 0
+  canRedo:     false,                // shorthand: cursor < stack.length
+  pastLength:  3,                    // equivalent to old past.length
+  futureLength: 0,                   // equivalent to old future.length
 }
 ```
 
-Now you can get your current state like this: `state.present`
+Read the current state with `state.present`. Use `canUndo` / `canRedo` to drive
+your UI buttons. The internal `stack` array stores patch pairs, not full copies.
 
-And you can access all past states (e.g. to show a history) like this: `state.past`
+### Accessing past states (history timeline UI)
 
-**Note:** Your reducer still receives the current state, a.k.a. `state.present`. Therefore, you would not have to update an existing reducer to add undo functionality.
-
-
-## Undo/Redo Actions
-
-Firstly, import the undo/redo action creators:
+If you need full state snapshots for a history timeline, use the
+`materializeHistory` helper. This is an explicit, opt-in O(N) operation:
 
 ```js
-import { ActionCreators } from 'redux-undo';
+import { materializeHistory } from 'redux-undo-slim'
+
+const { past, future } = materializeHistory(state, initialState)
+// past:   T[]  — full state at each past step
+// future: T[]  — full state at each future step
 ```
 
-Then, you can use `store.dispatch()` and the undo/redo action creators to
-perform undo/redo operations on your state:
+---
+
+## Undo / Redo Actions
 
 ```js
-store.dispatch(ActionCreators.undo()) // undo the last action
-store.dispatch(ActionCreators.redo()) // redo the last action
+import { ActionCreators } from 'redux-undo-slim'
 
-store.dispatch(ActionCreators.jump(-2)) // undo 2 steps
-store.dispatch(ActionCreators.jump(5)) // redo 5 steps
+store.dispatch(ActionCreators.undo())              // undo last action
+store.dispatch(ActionCreators.redo())              // redo last undone action
 
-store.dispatch(ActionCreators.jumpToPast(index)) // jump to requested index in the past[] array
-store.dispatch(ActionCreators.jumpToFuture(index)) // jump to requested index in the future[] array
+store.dispatch(ActionCreators.jump(-2))            // undo 2 steps
+store.dispatch(ActionCreators.jump(3))             // redo 3 steps
 
-store.dispatch(ActionCreators.clearHistory()) // Remove all items from past[] and future[] arrays
+store.dispatch(ActionCreators.jumpToPast(index))   // jump to a past index
+store.dispatch(ActionCreators.jumpToFuture(index)) // jump to a future index
+
+store.dispatch(ActionCreators.clearHistory())      // wipe history, keep present
 ```
 
+---
 
 ## Configuration
 
-A configuration object can be passed to `undoable()` like this (values shown
-are default values):
-
 ```js
 undoable(reducer, {
-  limit: false, // set to a number to turn on a limit for the history
+  // --- NEW in redux-undo-slim ---
+  patchMode: 'snapshot',  // 'snapshot' | 'immer' | 'diff'
+                          // 'snapshot': full copies (default, backward-compatible)
+                          // 'immer':    immer patch diffs — best memory savings
+                          // 'diff':     structural diff for plain reducers
 
-  filter: () => true, // see `Filtering Actions`
-  groupBy: () => null, // see `Grouping Actions`
+  // --- Unchanged from redux-undo ---
+  limit: false,           // max history steps (false = unlimited)
 
-  undoType: ActionTypes.UNDO, // define a custom action type for this undo action
-  redoType: ActionTypes.REDO, // define a custom action type for this redo action
+  filter: () => true,     // (action, newState, history) => bool
+                          // return false to exclude an action from history
+  groupBy: () => null,    // (action, newState, history) => key | null
+                          // consecutive actions with the same key become one undo step
 
-  jumpType: ActionTypes.JUMP, // define custom action type for this jump action
+  undoType:          '@@redux-undo/UNDO',
+  redoType:          '@@redux-undo/REDO',
+  jumpType:          '@@redux-undo/JUMP',
+  jumpToPastType:    '@@redux-undo/JUMP_TO_PAST',
+  jumpToFutureType:  '@@redux-undo/JUMP_TO_FUTURE',
+  clearHistoryType:  '@@redux-undo/CLEAR_HISTORY',
 
-  jumpToPastType: ActionTypes.JUMP_TO_PAST, // define custom action type for this jumpToPast action
-  jumpToFutureType: ActionTypes.JUMP_TO_FUTURE, // define custom action type for this jumpToFuture action
+  initTypes:         ['@@redux-undo/INIT'],  // reset history on these action types
 
-  clearHistoryType: ActionTypes.CLEAR_HISTORY, // define custom action type for this clearHistory action
-  // you can also pass an array of strings to define several action types that would clear the history
-  // beware: those actions will not be passed down to the wrapped reducers
-
-  initTypes: ['@@redux-undo/INIT'], // history will be (re)set upon init action type
-  // beware: those actions will not be passed down to the wrapped reducers
-
-  debug: false, // set to `true` to turn on debugging
-  ignoreInitialState: false, // prevent user from undoing to the beginning, ex: client-side hydration
-
-  neverSkipReducer: false, // prevent undoable from skipping the reducer on undo/redo and clearHistoryType actions
-  syncFilter: false // set to `true` to synchronize the `_latestUnfiltered` state with `present` when an excluded action is dispatched
+  debug:             false,
+  ignoreInitialState: false,  // if true, users cannot undo back to the initial state
+  neverSkipReducer:  false,   // if true, always run the wrapped reducer on undo/redo
+  syncFilter:        false,   // if true, filtered-action states become the undo anchor
 })
 ```
 
-**Note:** If you want to use just the `initTypes` functionality, but not import
-the whole redux-undo library, use [redux-recycle](https://github.com/omnidan/redux-recycle)!
+---
 
-### Initial State and History
+## Patch Modes
 
-You can use your redux store to set an initial history for your undoable reducers:
+### `patchMode: 'snapshot'` (default)
+
+Stores a full state copy per history step. Identical to classic `redux-undo`
+behaviour. Use this when migrating from `redux-undo` and you want zero changes.
 
 ```js
-
-import { createStore } from 'redux';
-
-const initialHistory = {
-  past: [0, 1, 2, 3],
-  present: 4,
-  future: [5, 6, 7]
-}
-
-// Alternatively use the helper:
-// import { newHistory } from 'redux-undo';
-// const initialHistory = newHistory([0, 1, 2, 3], 4, [5, 6, 7]);
-
-const store = createStore(undoable(counter), initialHistory);
-
+undoable(reducer)
+// or explicitly:
+undoable(reducer, { patchMode: 'snapshot' })
 ```
 
-Or just set the current state like you're used to with Redux. Redux-undo will create the history for you:
+### `patchMode: 'immer'` (recommended for new projects)
+
+Stores only immer patches between states. Requires the wrapped reducer to use
+immer's `produce` internally (or accept a draft and mutate it):
 
 ```js
+import { produce } from 'immer'
 
-import { createStore } from 'redux';
-
-const store = createStore(undoable(counter), {foo: 'bar'});
-
-// will make the state look like this:
-{
-  past: [],
-  present: {foo: 'bar'},
-  future: []
-}
-
-```
-
-### Grouping Actions
-
-If you want to group your actions together into single undo/redo steps, you
-can add a `groupBy` function to `undoable`. `redux-undo` provides
-`groupByActionTypes` as a basic `groupBy` function:
-
-```js
-import undoable, { groupByActionTypes } from 'redux-undo';
-
-undoable(reducer, { groupBy: groupByActionTypes(SOME_ACTION) })
-// or with arrays
-undoable(reducer, { groupBy: groupByActionTypes([SOME_ACTION]) })
-```
-
-In these cases, consecutive `SOME_ACTION` actions will be considered a single
-step in the undo/redo history.
-
-#### Custom `groupBy` Function
-
-If you want to implement custom grouping behaviour, pass in your own function
-with the signature `(action, currentState, previousHistory)`. If the return
-value is not `null`, then the new state will be grouped by that return value.
-If the next state is grouped into the same group as the previous state, then
-the two states will be grouped together in one step.
-
-If the return value is `null`, then `redux-undo` will not group the next state
-with the previous state.
-
-The `groupByActionTypes` function essentially returns the following:
-* If a grouped action type (`SOME_ACTION`), the action type of the action (`SOME_ACTION`).
-* If not a grouped action type (any other action type), `null`.
-
-When `groupBy` groups a state change, the associated `group` will be saved
-alongside `past`, `present`, and `future` so that it may be referenced by the
-next state change.
-
-After an undo/redo/jump occurs, the current group gets reset to `null` so that
-the undo/redo history is remembered.
-
-### Filtering Actions
-
-If you don't want to include every action in the undo/redo history, you can add
-a `filter` function to `undoable`. This is useful for, for example, excluding
-actions that were not triggered by the user.
-
-`redux-undo` provides you with the `includeAction` and `excludeAction` helpers
-for basic filtering. They should be imported like this:
-
-```js
-import undoable, { includeAction, excludeAction } from 'redux-undo';
-```
-
-Now you can use the helper functions:
-
-```js
-undoable(reducer, { filter: includeAction(SOME_ACTION) })
-undoable(reducer, { filter: excludeAction(SOME_ACTION) })
-
-// they even support Arrays:
-
-undoable(reducer, { filter: includeAction([SOME_ACTION, SOME_OTHER_ACTION]) })
-undoable(reducer, { filter: excludeAction([SOME_ACTION, SOME_OTHER_ACTION]) })
-```
-
-**Note:** Since [`beta4`](https://github.com/omnidan/redux-undo/releases/tag/beta4),
-          only actions resulting in a new state are recorded. This means the
-          (now deprecated) `distinctState()` filter is auto-applied.
-
-#### Custom Filters
-
-If you want to create your own filter, pass in a function with the signature
-`(action, currentState, previousHistory)`. For example:
-
-```js
-undoable(reducer, {
-  filter: function filterActions(action, currentState, previousHistory) {
-    return action.type === SOME_ACTION; // only add to history if action is SOME_ACTION
+const myReducer = produce((draft, action) => {
+  if (action.type === 'SET_TITLE') {
+    draft.title = action.title
   }
 })
 
-// The entire `history` state is available to your filter, so you can make
-// decisions based on past or future states:
+undoable(myReducer, { patchMode: 'immer' })
+```
 
+Memory savings scale with how much of the state actually changes per action.
+For a 1 MB state with a typical field update, a single history step is ~50 bytes
+instead of 1 MB.
+
+### `patchMode: 'diff'` (for existing plain reducers)
+
+Computes a structural diff after each reducer call. Works with any existing plain
+reducer — no changes to the reducer required. Requires `fast-json-patch` as an
+additional peer dependency:
+
+```bash
+npm install fast-json-patch
+```
+
+```js
+// Existing plain reducer — no changes needed:
+const myReducer = (state = initial, action) => { ... }
+
+undoable(myReducer, { patchMode: 'diff' })
+```
+
+---
+
+## Filtering Actions
+
+Prevent specific actions from being added to the undo history:
+
+```js
+import undoable, { includeAction, excludeAction } from 'redux-undo-slim'
+
+undoable(reducer, { filter: includeAction('MY_ACTION') })
+undoable(reducer, { filter: excludeAction(['MOUSE_MOVE', 'SCROLL']) })
+```
+
+A filtered action still updates `present` — it is just not recorded as an undo step.
+To block an action from updating state entirely, use
+[redux-ignore](https://github.com/omnidan/redux-ignore).
+
+### Custom filter
+
+```js
 undoable(reducer, {
-  filter: function filterState(action, currentState, previousHistory) {
-    let { past, present, future } = previousHistory;
-    return future.length === 0; // only add to history if future is empty
+  filter: (action, newState, history) => {
+    return newState.isDirty  // only record when state is dirty
   }
 })
 ```
 
-#### Combining Filters
-
-You can also use our helper to combine filters.
+### Combining filters
 
 ```js
-import undoable, {combineFilters} from 'redux-undo'
-
-function isActionSelfExcluded(action) {
-  return action.wouldLikeToBeInHistory
-}
-
-function areWeRecording(action, state) {
-  return state.recording
-}
+import { combineFilters } from 'redux-undo-slim'
 
 undoable(reducer, {
-  filter: combineFilters(isActionSelfExcluded, areWeRecording)
+  filter: combineFilters(
+    excludeAction(['MOUSE_MOVE']),
+    (action, state) => state.recording
+  )
 })
 ```
 
-### Ignoring Actions
+---
 
-When implementing a filter function, it only prevents the old state from being
-stored in the history. **`filter` does not prevent the present state from being
-updated.**
+## Grouping Actions
 
-If you want to ignore an action completely, as in, not even update the present
-state, you can make use of [redux-ignore](https://github.com/omnidan/redux-ignore).
-
-It can be used like this:
+Make consecutive related actions count as a single undo step:
 
 ```js
-import { ignoreActions } from 'redux-ignore'
+import undoable, { groupByActionTypes } from 'redux-undo-slim'
 
-ignoreActions(
-  undoable(reducer),
-  [IGNORED_ACTION, ANOTHER_IGNORED_ACTION]
-)
+undoable(reducer, { groupBy: groupByActionTypes('DRAG_MOVE') })
+// or with an array:
+undoable(reducer, { groupBy: groupByActionTypes(['DRAG_MOVE', 'RESIZE']) })
+```
 
-// or define your own function:
+Custom grouping:
 
-ignoreActions(
-  undoable(reducer),
-  (action) => action.type === SOME_ACTION // only add to history if action is SOME_ACTION
+```js
+undoable(reducer, {
+  groupBy: (action, newState, history) => {
+    if (action.type === 'DRAG_MOVE') return `drag-${action.itemId}`
+    return null  // null = start a new undo step
+  }
+})
+```
+
+> In `immer` and `diff` patch modes, grouped actions are merged at the patch level —
+> the entire group is stored as a single `OpEntry`, not N separate entries.
+> This means one undo step = one patch application, regardless of group size.
+
+---
+
+## Initial State
+
+Set an initial present state as you normally would with Redux — history is created automatically:
+
+```js
+const store = createStore(undoable(counter), { count: 5 })
+
+// State will be:
+// { present: { count: 5 }, stack: [], cursor: 0, canUndo: false, canRedo: false }
+```
+
+Or supply a pre-built history (e.g. for hydration):
+
+```js
+import { newHistory } from 'redux-undo-slim'
+
+const store = createStore(
+  undoable(counter),
+  newHistory([], { count: 5 }, [])
 )
 ```
 
+---
 
-## What is this magic? How does it work?
+## TypeScript
 
-Have a read of the [Implementing Undo History recipe](https://redux.js.org/recipes/implementing-undo-history) in the Redux documents, which explains in detail how redux-undo works.
+```ts
+import undoable, { PatchHistory, ActionCreators } from 'redux-undo-slim'
 
+// PatchHistory<T> is the state shape produced by undoable()
+type DocumentState = PatchHistory<{ title: string; body: string }>
 
-## Chat / Support
+// Access present state with correct typing:
+const title = store.getState().document.present.title
+```
 
-If you have a question or just want to discuss something with other redux-undo users/maintainers, [chat with the community on discord (discord.gg/GbHZTmd33n)](https://discord.gg/GbHZTmd33n)!
+---
 
-Also, look at the documentation over at [redux-undo.js.org](https://redux-undo.js.org/).
+## Migrating from `redux-undo`
 
+`redux-undo-slim` is a fork of `redux-undo` with a new default export name and
+optional memory-efficient patch modes. The default `patchMode: 'snapshot'` keeps
+full backward compatibility.
+
+| Change | Action required |
+|---|---|
+| Package name: `redux-undo` → `redux-undo-slim` | Update `import`/`require` |
+| `state.past.length` | Use `state.pastLength` |
+| `state.future.length` | Use `state.futureLength` |
+| `state.past` / `state.future` arrays for UI | Use `materializeHistory()` |
+| `StateWithHistory<T>` type | Use `PatchHistory<T>` |
+| Everything else | No change |
+
+---
+
+## How It Works
+
+For a deep dive into the patch-based architecture, see
+[docs/architecture-immer-patches.md](./docs/architecture-immer-patches.md).
+
+For the implementation roadmap, see
+[docs/implementation-phases.md](./docs/implementation-phases.md).
+
+The classic snapshot model is explained in the
+[Redux Implementing Undo History recipe](https://redux.js.org/recipes/implementing-undo-history).
+
+---
 
 ## License
 
-MIT, see `LICENSE.md` for more information.
+MIT — see [LICENSE.md](./LICENSE.md).
+
+Forked from [omnidan/redux-undo](https://github.com/omnidan/redux-undo) by
+[Irfan Khan](https://github.com/irfank).

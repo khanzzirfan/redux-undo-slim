@@ -101,16 +101,23 @@ runTests('Get Slices', {
 })
 runTests('Group By', {
   undoableConfig: {
-    groupBy: (action) => action.group || null
+    groupBy: (action: { group?: string }) => action.group ?? null
   },
   testConfig: {
     checkSlices: true
   }
 })
 
-// Test undoable reducers as a function of a configuration object
-// `label` describes the nature of the configuration object used to run a test
-function runTests (label, { undoableConfig = {}, initialStoreState, testConfig } = {}) {
+interface TestConfig {
+  checkSlices?: boolean
+  excludedActions?: string[]
+  includeActions?: string[]
+}
+
+function runTests (
+  label: string,
+  { undoableConfig = {}, initialStoreState, testConfig }: { undoableConfig?: Record<string, unknown>; initialStoreState?: unknown; testConfig?: TestConfig } = {}
+): void {
   describe('Undoable: ' + label, () => {
     let wasCalled = false
 
@@ -129,17 +136,16 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
       }
     }
 
-    let mockUndoableReducer
-    let mockInitialState
-    let incrementedState
-    let store
+    let mockUndoableReducer: ReturnType<typeof undoable>
+    let mockInitialState: ReturnType<typeof mockUndoableReducer>
+    let incrementedState: ReturnType<typeof mockUndoableReducer>
+    let store: ReturnType<typeof createStore>
 
     beforeAll(() => {
-      // undoableConfig.debug = true
       mockUndoableReducer = undoable(countReducer, undoableConfig)
       store = createStore(mockUndoableReducer, initialStoreState)
 
-      mockInitialState = mockUndoableReducer(undefined, {})
+      mockInitialState = mockUndoableReducer(undefined as unknown as Parameters<typeof mockUndoableReducer>[0], {} as Parameters<typeof mockUndoableReducer>[1])
       incrementedState = mockUndoableReducer(mockInitialState, { type: 'INCREMENT' })
       console.info('  Beginning Test! Good luck!')
       console.info('    initialStoreState:     ', initialStoreState)
@@ -166,9 +172,9 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
             future: mockInitialState.future
           }
           const actual = {
-            past: initialStoreState.past,
-            present: initialStoreState.present,
-            future: initialStoreState.future
+            past: (initialStoreState as { past: unknown[] }).past,
+            present: (initialStoreState as { present: unknown }).present,
+            future: (initialStoreState as { future: unknown[] }).future
           }
           expect(expected).to.deep.equal(actual)
         }
@@ -181,7 +187,7 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
             present: initialStoreState,
             _latestUnfiltered: initialStoreState,
             future: [],
-            group: null,
+            group: undefined,
             index: 0,
             limit: 1
           })
@@ -204,7 +210,6 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
         store.replaceReducer(undoable(tenfoldReducer, undoableConfig))
         expect(store.getState()).to.deep.equal(mockInitialState)
 
-        // swap back for other tests
         store.replaceReducer(mockUndoableReducer)
         expect(store.getState()).to.deep.equal(mockInitialState)
       })
@@ -212,15 +217,12 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
       it('should use replaced reducer for new actions', () => {
         store.replaceReducer(undoable(tenfoldReducer, undoableConfig))
 
-        // Increment and check result
         let expectedResult = tenfoldReducer(store.getState().present, { type: 'INCREMENT' })
         store.dispatch({ type: 'INCREMENT' })
         expect(store.getState().present).to.equal(expectedResult)
 
-        // swap back for other tests
         store.replaceReducer(mockUndoableReducer)
 
-        // Increment and check result again
         expectedResult = countReducer(store.getState().present, { type: 'INCREMENT' })
         store.dispatch({ type: 'INCREMENT' })
         expect(store.getState().present).to.equal(expectedResult)
@@ -234,11 +236,8 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
           const includedAction = { type: 'INCREMENT' }
           const notFilteredReducer = undoable(countReducer, { ...undoableConfig, filter: null })
           let expected = notFilteredReducer(mockInitialState, includedAction)
-          // should store state with included actions
           let actual = mockUndoableReducer(mockInitialState, includedAction)
           expect(actual).to.deep.equal(expected)
-          // but not this one... (keeping the presents caused by filtered actions out of the past)
-          // (Below, move forward by two filtered actions)
           expected = {
             ...expected,
             present: notFilteredReducer(
@@ -254,17 +253,14 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
         }
 
         if (testConfig && testConfig.includeActions) {
-          // should record this action's state in history
           const includedAction = { type: testConfig.includeActions[0] }
           const excludedAction = { type: 'INCREMENT' }
           const commonInitialState = mockUndoableReducer(mockInitialState, includedAction)
 
           const notFilteredReducer = undoable(countReducer, { ...undoableConfig, filter: null })
           let expected = notFilteredReducer(commonInitialState, includedAction)
-          // and this one - should work with included actions just fine
           let actual = mockUndoableReducer(commonInitialState, includedAction)
           expect(actual).to.deep.equal(expected)
-          // but not this one... (keeping the presents caused by filtered actions out of the past)
           expected = {
             ...expected,
             present: notFilteredReducer(expected, excludedAction).present
@@ -296,19 +292,18 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
       })
 
       it('should not record undefined actions', () => {
-        const dummyState = mockUndoableReducer(incrementedState, undefined)
+        const dummyState = mockUndoableReducer(incrementedState, undefined as unknown as Parameters<typeof mockUndoableReducer>[1])
         expect(dummyState).to.deep.equal(incrementedState)
       })
 
       it('should reset upon init actions', () => {
-        let reInitializedState
+        let reInitializedState: ReturnType<typeof mockUndoableReducer>
         if (undoableConfig && undoableConfig.initTypes) {
-          if (undoableConfig.initTypes.length > 0) {
+          if ((undoableConfig.initTypes as string[]).length > 0) {
             const initType = Array.isArray(undoableConfig.initTypes) ? undoableConfig.initTypes[0] : undoableConfig.initTypes
             reInitializedState = mockUndoableReducer(incrementedState, { type: initType })
             expect(reInitializedState).to.deep.equal(mockInitialState)
           } else {
-            // No init actions exist, init should have no effect
             reInitializedState = mockUndoableReducer(incrementedState, { type: '@@redux-undo/INIT' })
             expect(reInitializedState).to.deep.equal(incrementedState)
           }
@@ -327,7 +322,7 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
 
     describe('groupBy', () => {
       it('should run normally without undo/redo', () => {
-        if (undoableConfig && undoableConfig.groupBy && !testConfig.excludedActions) {
+        if (undoableConfig && undoableConfig.groupBy && !testConfig?.excludedActions) {
           const first = mockUndoableReducer(mockInitialState, {
             type: 'INCREMENT',
             group: 'a'
@@ -373,7 +368,7 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
       })
 
       it('should save undo/redo', () => {
-        if (undoableConfig && undoableConfig.groupBy && !testConfig.excludedActions) {
+        if (undoableConfig && undoableConfig.groupBy && !testConfig?.excludedActions) {
           const first = mockUndoableReducer(mockInitialState, {
             type: 'INCREMENT',
             group: 'a'
@@ -416,7 +411,7 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
     })
 
     describe('Undo', () => {
-      let undoState
+      let undoState: ReturnType<typeof mockUndoableReducer>
       beforeAll(() => {
         wasCalled = false
         undoState = mockUndoableReducer(incrementedState, ActionCreators.undo())
@@ -427,31 +422,31 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
       })
 
       it('should change present state back by one action', () => {
-        if (undoableConfig && undoableConfig.limit >= 0) {
+        if (undoableConfig && (undoableConfig.limit as number) >= 0) {
           expect(undoState.present).to.equal(mockInitialState.present)
         }
       })
 
       it('should change present state to last element of \'past\'', () => {
-        if (undoableConfig && undoableConfig.limit >= 0) {
+        if (undoableConfig && (undoableConfig.limit as number) >= 0) {
           expect(undoState.present).to.equal(incrementedState.past[incrementedState.past.length - 1])
         }
       })
 
       it('should add a new element to \'future\' from last state', () => {
-        if (undoableConfig && undoableConfig.limit >= 0) {
+        if (undoableConfig && (undoableConfig.limit as number) >= 0) {
           expect(undoState.future[0]).to.equal(incrementedState.present)
         }
       })
 
       it('should decrease length of \'past\' by one', () => {
-        if (undoableConfig && undoableConfig.limit >= 0) {
+        if (undoableConfig && (undoableConfig.limit as number) >= 0) {
           expect(undoState.past.length).to.equal(incrementedState.past.length - 1)
         }
       })
 
       it('should increase length of \'future\' by one', () => {
-        if (undoableConfig && undoableConfig.limit >= 0) {
+        if (undoableConfig && (undoableConfig.limit as number) >= 0) {
           expect(undoState.future.length).to.equal(incrementedState.future.length + 1)
         }
       })
@@ -467,23 +462,18 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
         if (testConfig && testConfig.excludedActions) {
           const excludedAction = { type: testConfig.excludedActions[0] }
           const includedAction = { type: 'INCREMENT' }
-          // handle excluded action on a not filtered initial state
           let state = mockUndoableReducer(mockInitialState, excludedAction)
-          // handle excluded action 2
           state = mockUndoableReducer(state, excludedAction)
-          // handle not excluded action
           const preUndoState = mockUndoableReducer(state, includedAction)
-          // undo
           state = mockUndoableReducer(preUndoState, ActionCreators.undo())
-          // should undo to (not filtered) initial present
           expect(state.present).to.deep.equal(preUndoState.past[preUndoState.past.length - 1])
         }
       })
     })
 
     describe('Redo', () => {
-      let undoState
-      let redoState
+      let undoState: ReturnType<typeof mockUndoableReducer>
+      let redoState: ReturnType<typeof mockUndoableReducer>
       beforeAll(() => {
         wasCalled = false
         undoState = mockUndoableReducer(incrementedState, ActionCreators.undo())
@@ -495,33 +485,31 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
       })
 
       it('should change present state to equal state before undo', () => {
-        // skip this test if steps are filtered out,
-        // because the action might have been was filtered it won't redo to it's state
         if (testConfig && !testConfig.includeActions) {
           expect(redoState.present).to.equal(incrementedState.present)
         }
       })
 
       it('should change present state to first element of \'future\'', () => {
-        if (undoableConfig && undoableConfig.limit >= 0) {
+        if (undoableConfig && (undoableConfig.limit as number) >= 0) {
           expect(redoState.present).to.equal(undoState.future[0])
         }
       })
 
       it('should add a new element to \'past\' from last state', () => {
-        if (undoableConfig && undoableConfig.limit >= 0) {
+        if (undoableConfig && (undoableConfig.limit as number) >= 0) {
           expect(redoState.past[redoState.past.length - 1]).to.equal(undoState.present)
         }
       })
 
       it('should decrease length of \'future\' by one', () => {
-        if (undoableConfig && undoableConfig.limit >= 0) {
+        if (undoableConfig && (undoableConfig.limit as number) >= 0) {
           expect(redoState.future.length).to.equal(undoState.future.length - 1)
         }
       })
 
       it('should increase length of \'past\' by one', () => {
-        if (undoableConfig && undoableConfig.limit >= 0) {
+        if (undoableConfig && (undoableConfig.limit as number) >= 0) {
           expect(redoState.past.length).to.equal(undoState.past.length + 1)
         }
       })
@@ -536,13 +524,9 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
       it('should not redo to filtered state', () => {
         if (testConfig && testConfig.excludedActions) {
           const excludedAction = { type: testConfig.excludedActions[0] }
-          // handle excluded action on a not filtered initial state
           const excludedState = mockUndoableReducer(mockInitialState, excludedAction)
-          // undo
           const postUndoState = mockUndoableReducer(excludedState, ActionCreators.undo())
-          // redo
           const postRedoState = mockUndoableReducer(postUndoState, ActionCreators.redo())
-          // redo should be ignored, because future state wasn't stored
           expect(mockInitialState).to.deep.equal(postRedoState)
         }
       })
@@ -550,7 +534,7 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
 
     describe('JumpToPast', () => {
       const jumpToPastIndex = 0
-      let jumpToPastState
+      let jumpToPastState: ReturnType<typeof mockUndoableReducer>
       beforeAll(() => {
         jumpToPastState = mockUndoableReducer(incrementedState, ActionCreators.jumpToPast(jumpToPastIndex))
       })
@@ -568,8 +552,6 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
       })
 
       it('should increase the length of future if successful', () => {
-        // skip this test if steps are filtered out,
-        // because the action might have been was filtered it won't be added to the future
         if (testConfig && !testConfig.includeActions) {
           if (incrementedState.past.length > jumpToPastIndex) {
             expect(jumpToPastState.future.length).to.be.above(incrementedState.future.length)
@@ -586,7 +568,7 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
 
     describe('JumpToFuture', () => {
       const jumpToFutureIndex = 2
-      let jumpToFutureState
+      let jumpToFutureState: ReturnType<typeof mockUndoableReducer>
       beforeAll(() => {
         jumpToFutureState = mockUndoableReducer(mockInitialState, ActionCreators.jumpToFuture(jumpToFutureIndex))
       })
@@ -627,10 +609,10 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
     describe('Jump', () => {
       const jumpStepsToPast = -2
       const jumpStepsToFuture = 2
-      let jumpToPastState
-      let jumpToFutureState
-      let doubleUndoState
-      let doubleRedoState
+      let jumpToPastState: ReturnType<typeof mockUndoableReducer>
+      let jumpToFutureState: ReturnType<typeof mockUndoableReducer>
+      let doubleUndoState: ReturnType<typeof mockUndoableReducer>
+      let doubleRedoState: ReturnType<typeof mockUndoableReducer>
       beforeAll(() => {
         const doubleIncrementedState = mockUndoableReducer(incrementedState, { type: 'INCREMENT' })
         jumpToPastState = mockUndoableReducer(doubleIncrementedState, ActionCreators.jump(jumpStepsToPast))
@@ -642,8 +624,6 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
       })
 
       it('-2 steps should result in same state as two times undo', () => {
-        // skip this test if steps are filtered out,
-        // because the double undo would be out of bounds and thus ignored
         if (testConfig && !testConfig.includeActions) {
           expect(doubleUndoState).to.deep.equal(jumpToPastState)
         }
@@ -667,10 +647,10 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
     })
 
     describe('Clear History', () => {
-      let clearedState
+      let clearedState: ReturnType<typeof mockUndoableReducer>
 
       beforeAll(() => {
-        const clearHistoryType = undoableConfig && undoableConfig.clearHistoryType
+        const clearHistoryType = undoableConfig && undoableConfig.clearHistoryType as string[] | undefined
         const actionType = clearHistoryType && Array.isArray(clearHistoryType) && clearHistoryType.length ? { type: clearHistoryType[0] } : ActionCreators.clearHistory()
         clearedState = mockUndoableReducer(incrementedState, actionType)
       })
@@ -684,15 +664,14 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
         expect(clearedState.present).to.equal(incrementedState.present)
       })
     })
-    
-    if (testConfig && testConfig.checkSlices) {
 
-    describe('running getSlices', () => {
+    if (testConfig?.checkSlices) {
+      describe('running getSlices', () => {
         const initialState = {
           normalState: 0,
           slice1: 100
         }
-        const sliceReducer = (state, action, slice1) => {
+        const sliceReducer = (state: number, action: { type: string }, slice1: number) => {
           switch (action.type) {
             case 'INCREMENT':
               return state + 1
@@ -705,16 +684,16 @@ function runTests (label, { undoableConfig = {}, initialStoreState, testConfig }
           }
         }
         const undoableSliceReducer = undoable(sliceReducer, undoableConfig)
-        const fullReducer = (state, action) => ({
+        const fullReducer = (state: { normalState: number; slice1: number }, action: { type: string }) => ({
           normalState: undoableSliceReducer(state.normalState, action, state.slice1),
           slice1: state.slice1
         })
-        let secondState
-        let thirdState
-        let fourthState
-        let fifthState
-        let sixthState
-        let seventhState
+        let secondState: ReturnType<typeof fullReducer>
+        let thirdState: ReturnType<typeof fullReducer>
+        let fourthState: ReturnType<typeof fullReducer>
+        let fifthState: ReturnType<typeof fullReducer>
+        let sixthState: ReturnType<typeof fullReducer>
+        let seventhState: ReturnType<typeof fullReducer>
         beforeAll(() => {
           secondState = fullReducer(initialState, { type: 'BOGUS' })
           thirdState = fullReducer(secondState, { type: 'INCREMENT' })
