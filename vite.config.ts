@@ -12,6 +12,11 @@ export default defineConfig({
     lib: {
       entry: './src/index.ts',
       name: 'ReduxUndoSlim'
+    },
+    rollupOptions: {
+      output: {
+        exports: 'named'
+      }
     }
   }
 })

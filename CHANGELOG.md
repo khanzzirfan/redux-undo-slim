@@ -95,6 +95,14 @@ const { past, present, future } = materializeHistory(state, initialState)
 
 - `immer` is now a **peer dependency** (required for `patchMode: 'immer'`)
 - `fast-json-patch` is an **optional peer dependency** (required for `patchMode: 'diff'`)
+- `typescript` is now a **dev dependency** (for type checking)
+
+### Dev Dependencies
+
+- `vitest` for testing
+- `vite` for building
+- `typescript` for type checking
+- `eslint` for linting
 
 ### Bundle Size
 

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest'
 import { createStore } from 'redux'
-import undoable, { ActionCreators } from '../src/index'
+import undoable, { ActionCreators, materializeHistory } from '../src/index'
 import { applyUndo, applyRedo, insertOp, jumpOp, jumpToPastOp, jumpToFutureOp } from '../src/patch-helpers'
 import { newPatchHistory } from '../src/helpers'
 import type { Patch } from 'immer'
@@ -269,5 +269,100 @@ describe('patch-limit', () => {
     const state = store.getState() as any
     expect(state.cursor).toBe(3)
     expect(state.stack.length).toBe(3)
+  })
+})
+
+describe('diff-mode round-trip', () => {
+  it('undo then redo with diff src returns to identical present', () => {
+    const history = newPatchHistory({ count: 2 }, [
+      { p: [{ op: 'replace', path: '/count', value: 1 }], ip: [{ op: 'replace', path: '/count', value: 0 }], src: 'diff' },
+      { p: [{ op: 'replace', path: '/count', value: 2 }], ip: [{ op: 'replace', path: '/count', value: 1 }], src: 'diff' },
+    ], 2)
+
+    const undone = applyUndo(history)
+    expect(undone.present.count).toBe(1)
+    expect(undone.cursor).toBe(1)
+
+    const redone = applyRedo(undone)
+    expect(redone.present.count).toBe(2)
+    expect(redone.cursor).toBe(2)
+  })
+})
+
+describe('materializeHistory', () => {
+  it('converts PatchHistory to snapshot history format with initialState', () => {
+    const history = newPatchHistory(2, [
+      { p: [{ op: 'replace', path: '', value: 1 }], ip: [{ op: 'replace', path: '', value: 0 }], src: 'immer' },
+      { p: [{ op: 'replace', path: '', value: 2 }], ip: [{ op: 'replace', path: '', value: 1 }], src: 'immer' },
+    ], 2)
+
+    const result = materializeHistory(history, 0)
+
+    expect(result.past).toEqual([0, 1])
+    expect(result.present).toBe(2)
+    expect(result.future).toEqual([])
+  })
+
+  it('includes future entries after cursor', () => {
+    const history = newPatchHistory(1, [
+      { p: [{ op: 'replace', path: '', value: 1 }], ip: [{ op: 'replace', path: '', value: 0 }], src: 'immer' },
+      { p: [{ op: 'replace', path: '', value: 2 }], ip: [{ op: 'replace', path: '', value: 1 }], src: 'immer' },
+    ], 1)
+
+    const result = materializeHistory(history, 0)
+
+    expect(result.past).toEqual([0])
+    expect(result.present).toBe(1)
+    expect(result.future).toEqual([2])
+  })
+
+  it('throws when initialState not provided for PatchHistory', () => {
+    const history = newPatchHistory(2, [
+      { p: [{ op: 'replace', path: '', value: 1 }], ip: [{ op: 'replace', path: '', value: 0 }], src: 'immer' },
+    ], 1)
+
+    expect(() => materializeHistory(history as any)).toThrow('materializeHistory requires initialState')
+  })
+})
+
+describe('grouped-op undo/redo', () => {
+  it('undo reverts entire grouped operation', () => {
+    const groupedCounter = undoable(counterReducer, {
+      patchMode: 'immer',
+      groupBy: (action) => action.type === 'INC' || action.type === 'DEC' ? 'arith' : null
+    })
+    const store = createStore(groupedCounter)
+
+    store.dispatch({ type: 'INC' })
+    store.dispatch({ type: 'INC' })
+    store.dispatch({ type: 'INC' })
+
+    const stateBefore = store.getState() as any
+    expect(stateBefore.stack.length).toBe(1)
+    expect(stateBefore.present).toBe(3)
+
+    store.dispatch(ActionCreators.undo())
+    const stateAfter = store.getState() as any
+    expect(stateAfter.present).toBe(0)
+    expect(stateAfter.cursor).toBe(0)
+  })
+
+  it('redo reapplies entire grouped operation', () => {
+    const groupedCounter = undoable(counterReducer, {
+      patchMode: 'immer',
+      groupBy: (action) => action.type === 'INC' || action.type === 'DEC' ? 'arith' : null
+    })
+    const store = createStore(groupedCounter)
+
+    store.dispatch({ type: 'INC' })
+    store.dispatch({ type: 'INC' })
+    store.dispatch({ type: 'INC' })
+
+    store.dispatch(ActionCreators.undo())
+    store.dispatch(ActionCreators.redo())
+
+    const state = store.getState() as any
+    expect(state.present).toBe(3)
+    expect(state.cursor).toBe(1)
   })
 })

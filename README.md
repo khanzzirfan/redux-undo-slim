@@ -21,7 +21,8 @@ For a full breakdown of the architecture see [docs/architecture-immer-patches.md
 npm install redux-undo-slim immer
 ```
 
-`immer` is a required peer dependency (`>=9.0.0`).
+- `immer` is a **required peer dependency** (`>=9.0.0`)
+- `fast-json-patch` is optional (`>=2.0.0`) — only needed for `patchMode: 'diff'`
 
 ---
 
