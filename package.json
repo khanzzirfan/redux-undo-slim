@@ -1,13 +1,13 @@
 {
-  "name": "redux-undo-slim",
+  "name": "undo-slim",
   "version": "2.1.0-alpha.1",
   "description": "Memory-efficient undo/redo for Redux — powered by immer patches",
-  "main": "./dist/redux-undo-slim.umd.js",
+  "main": "./dist/undo-slim.umd.js",
   "typings": "typings.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/redux-undo-slim.mjs",
-      "require": "./dist/redux-undo-slim.umd.js",
+      "import": "./dist/undo-slim.mjs",
+      "require": "./dist/undo-slim.umd.js",
       "types": "./typings.d.ts"
     }
   },
