@@ -1,6 +1,6 @@
 {
   "name": "undo-slim",
-  "version": "2.1.0-alpha.1",
+  "version": "2.1.0-alpha.2",
   "description": "Memory-efficient undo/redo for Redux — powered by immer patches",
   "main": "./dist/undo-slim.umd.js",
   "typings": "typings.d.ts",
@@ -24,7 +24,7 @@
     "test:coveralls": "npm run test -- --coverage && coveralls < coverage/lcov.info",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
-    "version:upgrade:alpha": "standard-version --prerelease alpha",
+    "version": "standard-version --prerelease alpha",
     "release": "npm publish --tag alpha",
     "release:alpha": "npm publish --tag alpha",
     "release:prealpha": "npm publish --tag prealpha"
