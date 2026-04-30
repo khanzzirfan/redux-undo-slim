@@ -11,6 +11,10 @@
       "types": "./typings.d.ts"
     }
   },
+  "publishConfig": {
+    "registry": "https://registry.npmjs.org/",
+    "access": "public"
+  },
   "scripts": {
     "build": "vite build",
     "lint": "npx eslint src test",
