@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [2.1.0-alpha.1](https://github.com/khanzzirfan/redux-undo-slim/compare/rc-2.1.0-alpha.0...rc-2.1.0-alpha.1) (2026-04-30)
+
+
+### Bug Fixes
+
+* updated standardversoin script ([e3f1695](https://github.com/khanzzirfan/redux-undo-slim/commit/e3f1695e63fa04c1d23d06e4ae80edb591baf339))
+
 ## 2.1.0-alpha.0 (2026-04-30)
 
 

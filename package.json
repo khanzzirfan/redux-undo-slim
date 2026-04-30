@@ -1,6 +1,6 @@
 {
   "name": "redux-undo-slim",
-  "version": "2.1.0-alpha.0",
+  "version": "2.1.0-alpha.1",
   "description": "Memory-efficient undo/redo for Redux — powered by immer patches",
   "main": "./dist/redux-undo-slim.umd.js",
   "typings": "typings.d.ts",
